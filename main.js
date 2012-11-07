@@ -5,7 +5,7 @@ var world_origin_x = CANVAS_WIDTH/2,
 
 var CANVAS_WIDTH, CANVAS_HEIGHT;
 
-var cur_angle = 0;
+var cur_angle = 0, connection;
 
 window.onload = startup;
 
@@ -28,7 +28,7 @@ function startup() {
 //
 
 function init_websocket() {
-    var connection = new ros.Connection("ws://doloras.chickenkiller.com:9090");
+    connection = new ros.Connection("ws://doloras.chickenkiller.com:9090");
     
     connection.setOnClose( function(e) {
         console.log('connection closed');
@@ -70,8 +70,20 @@ function init_websocket() {
 
     connection.setOnOpen( function(e) {
         console.log('connected to ROS');
-        connection.callService('/rosjs/subscribe','["/imu_data",-1]',function(e) {});
-        connection.callService('/rosjs/subscribe','["/scan",-1]',function(e) {});
+        
+        // TODO: how often is /imu_data published?
+        connection.callService('/rosjs/subscribe','["/imu_data", -1]',
+            function(e) {
+                console.log("connected to /imu_data!");
+            }
+        );
+
+        // /scan gets published to at about 15 Hz
+        connection.callService('/rosjs/subscribe','["/scan", 70]',
+            function(e) {
+                console.log("connected to /scan!");
+            }
+       ); 
     });
 }
 
@@ -166,6 +178,7 @@ function sendCommand(dir) {
     var vals = dirToValsMap[dir];
 
     if (vals) {
-        getFile(url+"?x="+vals.x+"&y="+vals.y, false, true);
+        var msg = '>SVXA:'+vals.x+'>SVYA:'+vals.y;
+        connection.publish('/psoc_cmd', 'std_msgs/String', '{"data":"'+msg+'"}');
     }
 }
