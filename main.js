@@ -5,7 +5,7 @@ var world_origin_x = CANVAS_WIDTH/2,
 
 var CANVAS_WIDTH, CANVAS_HEIGHT;
 
-var cur_angle = 0, connection;
+var cur_angle = 0, cur_points = [], connection;
 
 window.onload = startup;
 
@@ -21,6 +21,8 @@ function startup() {
     context.scale(CANVAS_WIDTH/world_width, -CANVAS_HEIGHT/world_height);
 
     init_websocket();
+
+    setInterval(redraw, 100);
 }
 
 //
@@ -43,7 +45,7 @@ function init_websocket() {
     });
 
     connection.addHandler('/scan', function(data) {
-        var points = [];
+        points = [];
         var max_range = data.range_max,
             min_angle = data.angle_min,
             max_angle = data.angle_max,
@@ -65,23 +67,23 @@ function init_websocket() {
             i++;
         }
 
-        drawPoints(points);
+        cur_points = points;
     });
 
     connection.setOnOpen( function(e) {
         console.log('connected to ROS');
         
-        // TODO: how often is /imu_data published?
-        connection.callService('/rosjs/subscribe','["/imu_data", -1]',
+        // /imu_data gets published to at about 35 Hz
+        connection.callService('/rosjs/subscribe','["/imu_data", '+Math.round(1000/35)+']',
             function(e) {
-                console.log("connected to /imu_data!");
+                console.log("connected to /imu_data!", e);
             }
         );
 
         // /scan gets published to at about 15 Hz
-        connection.callService('/rosjs/subscribe','["/scan", 70]',
+        connection.callService('/rosjs/subscribe','["/scan", '+Math.round(1000/15)+']',
             function(e) {
-                console.log("connected to /scan!");
+                console.log("connected to /scan!", e);
             }
        ); 
     });
@@ -103,12 +105,21 @@ function updateLidarDisplayPose(offsetx, offsety, yaw) {
 // LIDAR display functions
 //
 
-function drawPoints(points) {
-    var canvas = document.getElementById("canvas");
-    var context = canvas.getContext("2d");
+function redraw() {
+    clearCanvas();
+    drawPoints(cur_points);
+    drawOrigin();
+}
 
+function clearCanvas() {
+    var context = document.getElementById("canvas").getContext("2d");
+    
     context.fillStyle = "lightGray";
     context.fillRect(-world_width, -world_height, 2*world_width, 2*world_height);
+}
+
+function drawPoints(points) {
+    var context = document.getElementById("canvas").getContext("2d");
     
     context.lineWidth = .1;
     context.strokeStyle = "gray";
@@ -128,14 +139,15 @@ function drawPoints(points) {
             context.fill();
         }
     }
+}   
+
+function drawOrigin(context) {
+    var context = document.getElementById("canvas").getContext("2d");
 
     context.lineWidth = .05;
     context.strokeStyle = "blue";
     context.fillStyle = "blue";
-    drawOrigin(context);
-}   
 
-function drawOrigin(context) {
     context.beginPath();
     context.moveTo(0,0);
     context.lineTo(0, 1);
