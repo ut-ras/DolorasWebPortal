@@ -175,10 +175,10 @@ keyToDirMap["A".charCodeAt(0)] = "left";
 keyToDirMap["D".charCodeAt(0)] = "right";
 
 var dirToValsMap = {
-    "forward" :     {x:    0, y:  127},
-    "backward" :    {x:    0, y: -127},
-    "left" :        {x: -127, y:    0},
-    "right" :       {x:  127, y:    0}
+    "forward" :     {x: 128, y: 255},
+    "backward" :    {x: 128, y:   0},
+    "left" :        {x:   0, y: 128},
+    "right" :       {x: 255, y: 128}
 }
 
 function keypressed(event) {
@@ -187,10 +187,13 @@ function keypressed(event) {
 }
 
 function sendCommand(dir) {
+    console.log(dir);
     var vals = dirToValsMap[dir];
 
     if (vals) {
-        var msg = '>SVXA:'+vals.x+'>SVYA:'+vals.y;
+        var msg = '>SVXA:'+vals.x;
+        connection.publish('/psoc_cmd', 'std_msgs/String', '{"data":"'+msg+'"}');
+        msg = '>SVYA:'+vals.y;
         connection.publish('/psoc_cmd', 'std_msgs/String', '{"data":"'+msg+'"}');
     }
 }
