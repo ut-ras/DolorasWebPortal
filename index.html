@@ -1,16 +1,16 @@
 <html>
 <head>
-<script src="main.js"></script>
+<script type="text/javascript" src="main.js"></script>
 <script type="text/javascript" src="http://brown-ros-pkg.googlecode.com/svn/tags/brown-ros-pkg/rosbridge/ros.js"></script>
 </head>
-<body onkeydown=keypressed(event) style="text-align:center">
+<body onload="main()" onkeydown=keypressed(event) style="text-align:center">
     <h1>Doloras Web Portal</h1>
     <h3>use the buttons below or hit w/a/s/d to move the robot</h3>
-    <img src="http://doloras.chickenkiller.com:8080/stream?topic=/gscam/image_raw" 
-         alt="looks like mjpeg server isn't connected properly!" 
+    <img id="image_viewer"
+         alt="looks like mjpeg server isn't connected properly!"
          id="image" height="480" width="640"/>
     <canvas style="background:lightGray;" id="canvas" width=500 height=500></canvas>
-    <br/> 
+    <br/>
     <button type="submit" onClick="sendCommand('forward')">Forward</button>
     <button type="submit" onClick="sendCommand('backward')">Back</button>
     <button type="submit" onClick="sendCommand('left')">Left</button>

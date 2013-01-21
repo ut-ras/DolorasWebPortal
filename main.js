@@ -1,18 +1,20 @@
-var world_origin_x = CANVAS_WIDTH/2, 
+var IMAGE_DATA_URL = 'http://doloras.kicks-ass.org:8080/stream?topic=/usb_cam/image_raw';
+
+var world_origin_x = CANVAS_WIDTH/2,
     world_origin_y = CANVAS_HEIGHT/2,
-    world_width = 25, 
+    world_width = 25,
     world_height = 25;
 
 var CANVAS_WIDTH, CANVAS_HEIGHT;
 
 var cur_angle = 0, cur_points = [], connection;
 
-window.onload = startup;
+window.onload = main;
 
-function startup() {
+function main() {
     var canvas = document.getElementById("canvas");
     var context = canvas.getContext("2d");
-    
+
     CANVAS_WIDTH = canvas.width;
     CANVAS_HEIGHT = canvas.height;
 
@@ -21,8 +23,17 @@ function startup() {
     context.scale(CANVAS_WIDTH/world_width, -CANVAS_HEIGHT/world_height);
 
     init_websocket();
+    init_image_viewer();
 
     setInterval(redraw, 100);
+};
+
+//
+// Image viewer stuff
+//
+
+function init_image_viewer() {
+  document.getElementById('image_viewer').setAttribute('src', IMAGE_DATA_URL);
 }
 
 //
@@ -30,8 +41,8 @@ function startup() {
 //
 
 function init_websocket() {
-    connection = new ros.Connection("ws://doloras.chickenkiller.com:9090");
-    
+    connection = new ros.Connection("ws://doloras.kicks-ass.org:9090");
+
     connection.setOnClose( function(e) {
         console.log('connection closed');
     });
@@ -41,10 +52,12 @@ function init_websocket() {
     });
 
     connection.addHandler('/imu_data', function(data) {
+//        console.log("IMU DATA: ",data.yaw);
         updateLidarDisplayPose(0, 0, data.yaw);
     });
 
     connection.addHandler('/scan', function(data) {
+//        console.log("LIDAR DATA: ...");
         points = [];
         var max_range = data.range_max,
             min_angle = data.angle_min,
@@ -61,7 +74,7 @@ function init_websocket() {
                 isValid = false;
             }
 
-            points.push([range*Math.cos(angle+Math.PI/2), 
+            points.push([range*Math.cos(angle+Math.PI/2),
                          range*Math.sin(angle+Math.PI/2),
                          isValid]);
             i++;
@@ -72,7 +85,7 @@ function init_websocket() {
 
     connection.setOnOpen( function(e) {
         console.log('connected to ROS');
-        
+
         // /imu_data gets published to at about 35 Hz
         connection.callService('/rosjs/subscribe','["/imu_data", '+Math.round(1000/35)+']',
             function(e) {
@@ -85,7 +98,7 @@ function init_websocket() {
             function(e) {
                 console.log("connected to /scan!", e);
             }
-       ); 
+       );
     });
 }
 
@@ -113,14 +126,14 @@ function redraw() {
 
 function clearCanvas() {
     var context = document.getElementById("canvas").getContext("2d");
-    
+
     context.fillStyle = "lightGray";
     context.fillRect(-world_width, -world_height, 2*world_width, 2*world_height);
 }
 
 function drawPoints(points) {
     var context = document.getElementById("canvas").getContext("2d");
-    
+
     context.lineWidth = .1;
     context.strokeStyle = "gray";
     context.fillStyle = "black";
@@ -131,7 +144,7 @@ function drawPoints(points) {
         context.lineTo(points[i][0], points[i][1]);
         context.stroke();
     }
-    
+
     for (var i = 0; i < points.length; i++) {
         if (points[i][2]) {
             context.beginPath();
@@ -139,7 +152,7 @@ function drawPoints(points) {
             context.fill();
         }
     }
-}   
+}
 
 function drawOrigin(context) {
     var context = document.getElementById("canvas").getContext("2d");
@@ -155,7 +168,7 @@ function drawOrigin(context) {
     context.stroke();
 
     context.beginPath();
-    context.moveTo(0, 1);    
+    context.moveTo(0, 1);
     context.lineTo(-.2, .8);
     context.stroke();
 
