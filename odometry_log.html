@@ -1,0 +1,145 @@
+<html>
+<body style="text-align:center">
+    <h1>Doloras Odometry Log</h1>
+    <canvas style="background:lightGray;" id="canvas" width=800 height=600></canvas>
+
+<script type="text/javascript" src="http://brown-ros-pkg.googlecode.com/svn/tags/brown-ros-pkg/rosbridge/ros.js"></script>
+
+<script>
+
+var STAY_IN_PLACE = false,
+    CLEAR_SCREEN = false,
+
+    RADIUS = 4,
+    LEN = 20,
+    SCALE_Y = 24,
+    SCALE_X = 20.5,
+    IMG_START_X = -350,
+    IMG_START_Y = -70,
+
+    canvas = document.getElementById("canvas"),
+    context = canvas.getContext("2d"),
+    RATE = 15,
+
+    received_first = false,
+    x_first = null,
+    y_first = null,
+
+    buffer;
+
+function drawGrid() {
+    var x, y;
+    context.strokeStyle = "gray";
+
+    context.fillStyle = "lightGray";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    bg_image = new Image();
+    bg_image.src = 'ens_lawn.png';
+    bg_image.onload = function() {
+        context.save();
+        context.scale(1.3, 1.3);
+        context.drawImage(bg_image, IMG_START_X, IMG_START_Y); //0, -300);
+        context.restore();
+
+        for (y = 0; y <= canvas.height; y += SCALE_Y) {
+            context.moveTo(0, y);
+            context.lineTo(canvas.width, y);
+            context.stroke();
+        }
+
+        for (x = 0; x <= canvas.width; x += SCALE_X) {
+            context.moveTo(x, 0);
+            context.lineTo(x, canvas.height);
+            context.stroke();
+        }
+
+        context.fillStyle = "black";
+        context.beginPath();
+        context.arc(canvas.width/2, canvas.height/2, RADIUS, 0, 2*Math.PI, false);
+        context.fill();
+
+        buffer = context.getImageData(0, 0, canvas.width, canvas.height);
+    }
+}
+drawGrid();
+
+function draw_state(ekf_data) {
+    var x = ekf_data.x_pos,
+        y = ekf_data.y_pos,
+        theta = ekf_data.yaw;
+
+    console.log(ekf_data.yaw);
+
+    if (STAY_IN_PLACE) {
+        x = canvas.width/2;
+        y = canvas.height/2;
+    } else {
+        if (!received_first) {
+            x_first = x;
+            y_first = y;
+            received_first = true;
+        }
+
+        x -= x_first;
+        y -= y_first;
+
+        x = x*SCALE_X + canvas.width/2;
+        y = canvas.height - (y*SCALE_Y + canvas.height/2);
+    }
+
+    if (CLEAR_SCREEN) {
+        context.putImageData(buffer, 0, 0)
+    }
+
+    context.strokeStyle = "darkBlue";
+    context.fillStyle = "lightBlue";
+    context.beginPath();
+    context.arc(x, y, RADIUS, 0, 2*Math.PI, false);
+    context.fill();
+    context.stroke();
+
+    context.strokeStyle = "white";
+    context.beginPath();
+    context.moveTo(x, y);
+    context.lineTo(x + LEN*Math.cos(-theta), y + LEN*Math.sin(-theta));
+    context.stroke();
+}
+
+//
+// Websocket stuff
+//
+
+(function () {
+    connection = new ros.Connection("ws://doloras.kicks-ass.org:9090");
+
+    connection.setOnClose( function(e) {
+        console.log('connection closed');
+    });
+
+    connection.setOnError( function(e) {
+        console.log('error:',e);
+    });
+
+    connection.addHandler('/ekf_data', function(data) {
+	    // console.log("ekf data: ",data);
+        draw_state(data);
+    });
+
+    connection.setOnOpen( function(e) {
+        console.log('connected to ROS');
+
+        // /imu_data gets published to at about RATE Hz
+        connection.callService('/rosjs/subscribe','["/ekf_data", '+(1000/RATE)+']',
+            function(e) {
+                console.log("connected to /ekf_data!", e);
+            }
+        );
+    });
+})();
+
+</script>
+
+
+</body>
+<html>

@@ -1,0 +1,19 @@
+<html>
+<head>
+<script type="text/javascript" src="frank_visual.js"></script>
+<script type="text/javascript" src="http://brown-ros-pkg.googlecode.com/svn/tags/brown-ros-pkg/rosbridge/ros.js"></script>
+</head>
+<body onload="main()" onkeydown=keypressed(event) style="text-align:center">
+    <h1>Franks Visual</h1>
+    <h3>use the buttons below or hit w/a/s/d to move the robot</h3>
+    <img id="image_viewer"
+         alt="looks like mjpeg server isn't connected properly!"
+         id="image" height="480" width="640"/>
+    <canvas style="background:lightGray;" id="canvas" width=500 height=500></canvas>
+    <br/>
+    <button type="submit" onClick="sendCommand('forward')">Forward</button>
+    <button type="submit" onClick="sendCommand('backward')">Back</button>
+    <button type="submit" onClick="sendCommand('left')">Left</button>
+    <button type="submit" onClick="sendCommand('right')">Right</button><br/>
+</body>
+<html>
