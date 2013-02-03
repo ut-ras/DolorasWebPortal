@@ -1,4 +1,5 @@
-var IMAGE_DATA_URL = 'http://doloras.kicks-ass.org:8080/stream?topic=/usb_cam/image_raw';
+var IMAGE_DATA_URL = 'http://doloras.kicks-ass.org:8080/stream?topic=/usb_cam/image_raw',
+    YAW_OFFSET = 0;
 
 var world_origin_x = CANVAS_WIDTH/2,
     world_origin_y = CANVAS_HEIGHT/2,
@@ -74,8 +75,8 @@ function init_websocket() {
                 isValid = false;
             }
 
-            points.push([range*Math.cos(angle+Math.PI/2),
-                         range*Math.sin(angle+Math.PI/2),
+            points.push([range*Math.cos(angle),
+                         range*Math.sin(angle),
                          isValid]);
             i++;
         }
@@ -111,7 +112,7 @@ function updateLidarDisplayPose(offsetx, offsety, yaw) {
     context.setTransform(1,0,0,1,1,1);
     context.translate(CANVAS_WIDTH/2+offsetx, CANVAS_HEIGHT/2+offsety);
     context.scale(CANVAS_WIDTH/world_width, -CANVAS_HEIGHT/world_height);
-    context.rotate(yaw);
+    context.rotate(yaw + YAW_OFFSET);
 }
 
 //
@@ -162,14 +163,14 @@ function drawOrigin(context) {
     context.fillStyle = "blue";
 
     context.beginPath();
-    context.moveTo(0,0);
-    context.lineTo(0, 1);
-    context.lineTo(.2, .8);
+    context.moveTo(0, 0);
+    context.lineTo(1, 0);
+    context.lineTo(.8, .2);
     context.stroke();
 
     context.beginPath();
-    context.moveTo(0, 1);
-    context.lineTo(-.2, .8);
+    context.moveTo(1, 0);
+    context.lineTo(.8, -.2);
     context.stroke();
 
     context.beginPath();
