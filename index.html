@@ -1,19 +1,485 @@
 <html>
 <head>
-<script type="text/javascript" src="main.js"></script>
-<script type="text/javascript" src="http://brown-ros-pkg.googlecode.com/svn/tags/brown-ros-pkg/rosbridge/ros.js"></script>
+<style type="text/css">
+body {
+	margin: auto;
+	text-align: center;
+}
+
+canvas {
+    background: lightGray;
+}
+
+#gmaps_div {
+    width: 480px;
+    height: 360px; 
+	margin: auto;
+    display: inline-block;
+}
+
+#image_viewer {
+    background: lightGray;
+}
+</style>
 </head>
-<body onload="main()" onkeydown=keypressed(event) style="text-align:center">
-    <h1>Doloras Web Portal</h1>
-    <h3>use the buttons below or hit w/a/s/d to move the robot</h3>
-    <img id="image_viewer"
-         alt="looks like mjpeg server isn't connected properly!"
-         id="image" height="480" width="640"/>
-    <canvas style="background:lightGray;" id="canvas" width=500 height=500></canvas>
-    <br/>
-    <button type="submit" onClick="sendCommand('forward')">Forward</button>
-    <button type="submit" onClick="sendCommand('backward')">Back</button>
-    <button type="submit" onClick="sendCommand('left')">Left</button>
-    <button type="submit" onClick="sendCommand('right')">Right</button><br/>
+
+<body>
+<h3>Granny Web Portal 2.0</h3>
+
+<div id="gmaps_div"></div>
+<canvas id="lidar_imu_canvas" height="360" width="480"></canvas>
+<br/>
+<img id="image_viewer"
+     alt="looks like mjpeg server isn't connected properly!"
+     id="image" height="360" width="480"/>
+<canvas id="odometry_canvas" height="360" width="480"></canvas>
+
+<script type="text/javascript" src="//maps.googleapis.com/maps/api/js?key=AIzaSyDcfZrTqJaJJyX3hxctoJsg7LJXKx6KnPg&sensor=false"
+        type="text/javascript"></script>
+<script src="http://brown-ros-pkg.googlecode.com/svn/tags/brown-ros-pkg/rosbridge/ros.js"
+        type="text/javascript"></script>
+<script type="text/javascript">
+
+var DOMAIN = "doloras.kicks-ass.org",
+    // DOMAIN = "localhost",
+    IMAGE_DATA_URL = "http://"+DOMAIN+":8080/stream?topic=/usb_cam/image_raw";
+
+//
+// Google mapping stuff
+//
+
+var gmapsInterface = function () {
+    var START_LON =  30.29537,
+        START_LAT = -97.74017,
+        REBOUND_MAP = false,
+
+        map, 
+        num_coords = 0, 
+
+        that = {};
+
+    that.load = function () {
+        map = new google.maps.Map(document.getElementById("gmaps_div"), {
+            mapTypeId: google.maps.MapTypeId.HYBRID,
+            center: new google.maps.LatLng(START_LON, START_LAT),
+            zoom: 20,
+            tilt: 0
+        });3
+    };
+
+    that.draw = function (pos) {
+        var marker, latlngbounds;
+
+        marker = new google.maps.Marker({
+            map: map,
+            position: pos,
+            flat: true,
+            title: num_coords+"" 
+        });
+
+        // recalculate bounds for first point
+        if (REBOUND_MAP && 0 == num_coords) {
+            latlngbounds = new google.maps.LatLngBounds();
+            latlngbounds.extend(pos);
+
+            map.setCenter(latlngbounds.getCenter(), map.fitBounds(latlngbounds));
+        }
+
+        num_coords += 1;
+    };
+
+    return that;
+}();
+
+//
+// Canvas interfaces
+//
+
+var lidarImuCanvasInterface = function () {
+    var ANIMATION_RATE = 10, // hertz
+
+        canvas, 
+        context, 
+        curScanPoints,
+        curYaw,
+
+        that = {},
+
+        drawPoints = function (points) {
+            var i;
+            
+            context.lineWidth = 1;
+            context.strokeStyle = "gray";
+
+            context.beginPath();
+            context.moveTo(canvas.width/2, canvas.height/2);
+            for (i = 0; i < curScanPoints.length; i++) {
+                context.lineTo(curScanPoints[i][0]*14 + canvas.width/2, 
+                               curScanPoints[i][1]*14 + canvas.height/2);
+                context.lineTo(canvas.width/2, canvas.height/2);
+            }
+            context.stroke();
+
+            context.fillStyle = "black";
+            for (i = 0; i < points.length; i++) {
+                if (curScanPoints[i][2]) {
+                    context.beginPath();
+                    context.arc(curScanPoints[i][0]*14 + canvas.width/2, 
+                                curScanPoints[i][1]*14 + canvas.height/2,
+                                1, 0, 2*Math.PI, true);
+                    context.fill();
+                }
+            }
+        },
+
+        drawDirection = function (dir) {
+            var farx = 20*Math.cos(dir),
+                fary = -20*Math.sin(dir),
+                lowx = 17*Math.cos(dir + Math.PI/8),
+                lowy = -17*Math.sin(dir + Math.PI/8),
+                highx = 17*Math.cos(dir - Math.PI/8),
+                highy = -17*Math.sin(dir - Math.PI/8);
+
+            context.lineWidth = 2;
+            context.strokeStyle = "blue";
+            context.fillStyle = "blue";
+
+            context.beginPath();
+            context.moveTo(canvas.width/2, canvas.height/2);
+            context.lineTo(canvas.width/2 + farx, canvas.height/2 + fary);
+            context.lineTo(canvas.width/2 + lowx, canvas.height/2 + lowy);
+            context.stroke();
+
+            context.beginPath();
+            context.lineTo(canvas.width/2 + farx, canvas.height/2 + fary);
+            context.lineTo(canvas.width/2 + highx, canvas.height/2 + highy);
+            context.stroke();
+
+            context.beginPath();
+            context.arc(canvas.width/2, canvas.height/2, 3, 0, 2*Math.PI, true);
+            context.fill();
+        },
+
+        draw = function () {
+            if (curYaw || curScanPoints) {
+                context.save();
+                context.fillStyle = "lightGray";
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.restore();
+            }
+
+            if (curScanPoints) {
+                context.save();
+                drawPoints(curScanPoints);
+                context.restore();
+            }
+
+            if (curYaw) {
+                context.save();
+                drawDirection(curYaw);
+                context.restore();
+            }
+        };
+
+    that.init = function() {
+        canvas = document.getElementById("lidar_imu_canvas"),
+        context = canvas.getContext('2d');
+        setInterval(
+            function () { draw(); }, 
+            1000/ANIMATION_RATE
+        );
+    };
+    
+    that.setLIDAR = function (data) {
+        var angle, i, range, isValid,
+            max_range = data.range_max,
+            min_angle = data.angle_min,
+            max_angle = data.angle_max,
+            angle_inc = data.angle_increment,
+            data_len = data.ranges.length;
+
+        if (!curScanPoints) {
+            curScanPoints = new Array(data_len);
+
+            for (i = 0; i < data_len; i++) {
+                curScanPoints[i] = new Array(3);
+            }
+        }
+
+        angle = min_angle
+
+        for (i = 0; i < data_len; i++) {
+            range = data.ranges[i];
+            isValid = true;
+
+            if (0 === range) {
+                range = max_range;
+                isValid = false;
+            }
+
+            curScanPoints[i][0] = range*Math.cos((curYaw) ? angle+curYaw : angle);
+            curScanPoints[i][1] = -range*Math.sin((curYaw) ? angle+curYaw : angle);
+            curScanPoints[i][2] = isValid;
+
+            angle += angle_inc;
+        }
+    };
+
+    that.setYaw = function (yaw) {
+        curYaw = yaw;
+    };
+
+    return that;
+}();
+
+var odometryCanvasInterface = function () {
+    var STAY_IN_PLACE = false,
+        CLEAR_SCREEN = false,
+        BG_IMG_URL = 'images/test2_field.png',
+        RADIUS = 4,
+        LEN = 20,
+        SCALE_Y = 6.4,
+        SCALE_X = 6.4,
+        IMG_START_X = 30,
+        IMG_START_Y = 8,
+
+        received_first = false,
+        x_first = null,
+        y_first = null,
+
+        canvas, 
+        context, 
+        buffer,
+
+        that = {},
+
+        drawBackground = function () {
+            context.save();
+
+            context.fillStyle = "lightGray";
+            context.fillRect(0, 0, canvas.width, canvas.height);
+
+            context.restore();
+        },
+
+        drawGrid = function () {
+            var x, y;
+
+            context.save();
+
+            context.lineWidth = 1;
+            context.strokeStyle = "gray";
+
+            for (y = 0; y <= canvas.height; y += 2*SCALE_Y) {
+                context.moveTo(0, y);
+                context.lineTo(canvas.width, y);
+                context.stroke();
+            }
+
+            for (x = 0; x <= canvas.width; x += 2*SCALE_X) {
+                context.moveTo(x, 0);
+                context.lineTo(x, canvas.height);
+                context.stroke();
+            }
+
+            context.strokeStyle = "darkBlue";
+            context.fillStyle = "lightBlue";
+            context.beginPath();
+            context.arc(canvas.width/2, canvas.height/2, RADIUS, 0, 2*Math.PI, false);
+            context.fill();
+            context.stroke();
+
+            context.restore();
+
+            buffer = context.getImageData(0, 0, canvas.width, canvas.height);
+        },
+
+        drawImage = function () {
+            bg_image = new Image();
+            bg_image.src = BG_IMG_URL;
+            bg_image.onload = function () {
+                context.save();
+
+                context.scale(.8, .8);
+                context.drawImage(bg_image, IMG_START_X, IMG_START_Y); 
+
+                context.restore();
+
+                drawGrid();
+
+                buffer = context.getImageData(0, 0, canvas.width, canvas.height);
+            }
+        };
+
+    that.drawState = function (ekf_data) {
+        var x = ekf_data.x_pos,
+            y = ekf_data.y_pos,
+            theta = ekf_data.yaw;
+
+        if (STAY_IN_PLACE) {
+            x = canvas.width/2;
+            y = canvas.height/2;
+        } else {
+            if (!received_first) {
+                x_first = x;
+                y_first = y;
+                received_first = true;
+            }
+
+            x -= x_first;
+            y -= y_first;
+
+            x = x*SCALE_X + canvas.width/2;
+            y = canvas.height - (y*SCALE_Y + canvas.height/2);
+        }
+
+        if (CLEAR_SCREEN) {
+            context.putImageData(buffer, 0, 0)
+        }
+
+        context.strokeStyle = "darkBlue";
+        context.fillStyle = "lightBlue";
+        context.beginPath();
+        context.arc(x, y, RADIUS, 0, 2*Math.PI, false);
+        context.fill();
+        context.stroke();
+
+        context.strokeStyle = "white";
+        context.beginPath();
+        context.moveTo(x, y);
+        context.lineTo(x + LEN*Math.cos(-theta), y + LEN*Math.sin(-theta));
+        context.stroke();
+    };
+
+    that.init = function() {
+        canvas = document.getElementById("odometry_canvas"),
+        context = canvas.getContext('2d');
+        drawBackground();
+        drawImage();
+    };
+
+    return that;
+}();
+
+//
+// ROS topic callbacks
+//
+
+var handlers = {
+    os_imu_handler: function (data) {
+        console.log("os imu data!");
+        lidarImuCanvasInterface.setYaw(data.yaw);
+    },
+
+    um6_imu_handler: function (data) {
+        // console.log("um6 imu data!");
+        lidarImuCanvasInterface.setYaw(-data.orientation_euler.yaw*Math.PI/180.0);
+    },
+
+    lidar_handler: function (data) {
+        // console.log("lidar data!");
+        lidarImuCanvasInterface.setLIDAR(data);
+    },
+
+    ekf_handler: function (data) {
+        var x = data.x_pos,
+            y = data.y_pos;
+
+        odometryCanvasInterface.drawState(data);
+    },
+
+    gps_handler: function (data) {
+        var lon = data.latitude,
+            lat = data.longitude,
+            pos = new google.maps.LatLng(lon, lat);
+
+        gmapsInterface.draw(pos);
+    },
+};
+
+//
+// Websocket stuff
+//
+
+(function () {
+    var i, 
+        connection = new ros.Connection("ws://"+DOMAIN+":9090"),
+
+        topics = [	
+        /*
+            { topicName: "/imu_data", 
+              dataName: "ocean server imu data", 
+              handler: handlers.os_imu_handler,
+              rate: 35 },
+        */
+            { topicName: "/um6_imu_data", 
+              dataName: "um6 imu data", 
+              handler: handlers.um6_imu_handler,
+              rate: 19 },
+
+            { topicName: "/ekf_data", 
+              dataName: "ekf data", 
+              handler: handlers.ekf_handler,
+              rate: 15 },
+
+            { topicName: "/gps_data_raw", 
+              dataName: "gps data", 
+              handler: handlers.gps_handler,
+              rate: 1 },
+
+            { topicName: "/scan", 
+              dataName: "lidar data", 
+              handler: handlers.lidar_handler,
+              rate: 15 },
+        ];
+
+    connection.setOnClose(function (e) {
+        console.log('connection closed');
+    });
+
+    connection.setOnError(function (e) {
+        console.log('error:', e);
+    });
+
+    var makeAnnouncer = function(name) {
+        return function (e) {
+            console.log("connected to " + name + "!", e);
+        };
+    };
+
+    for (i = 0; i < topics.length; i++) {
+        connection.addHandler(topics[i].topicName, topics[i].handler);
+    }
+
+    connection.setOnOpen(function (e) {
+        console.log('connected to ROS');
+        
+        for (i = 0; i < topics.length; i++) { 
+            connection.callService(
+                '/rosjs/subscribe', 
+                '["' + topics[i].topicName + '", ' + (1000/topics[i].rate) + ']',
+                makeAnnouncer(topics[i].topicName)
+            );
+        }
+    });
+})();
+
+//
+// Startup
+//
+
+window.onload = function () { 
+    gmapsInterface.load(); 
+    lidarImuCanvasInterface.init();
+    odometryCanvasInterface.init();
+
+    // mjpeg_server image streamer
+    document.getElementById('image_viewer').setAttribute('src', IMAGE_DATA_URL);
+};
+
+</script>
+
+
 </body>
-<html>
+</html>
+
