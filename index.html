@@ -6,42 +6,34 @@ body {
 	text-align: center;
 }
 
-canvas {
-    background: lightGray;
-}
-
 #gmaps_div {
     width: 480px;
-    height: 360px; 
+    height: 360px;
 	margin: auto;
     display: inline-block;
+}
+
+#odometry_canvas {
+    background: lightGray;
 }
 
 #image_viewer {
     background: lightGray;
 }
+
+#lidar_imu_canvas {
+    background: lightGray;
+}
 </style>
-</head>
 
-<body>
-<h3>Granny Web Portal 2.0</h3>
-
-<div id="gmaps_div"></div>
-<canvas id="lidar_imu_canvas" height="360" width="480"></canvas>
-<br/>
-<img id="image_viewer"
-     alt="looks like mjpeg server isn't connected properly!"
-     id="image" height="360" width="480"/>
-<canvas id="odometry_canvas" height="360" width="480"></canvas>
-
-<script type="text/javascript" src="//maps.googleapis.com/maps/api/js?key=AIzaSyDcfZrTqJaJJyX3hxctoJsg7LJXKx6KnPg&sensor=false"
+<script src="//maps.googleapis.com/maps/api/js?key=AIzaSyDcfZrTqJaJJyX3hxctoJsg7LJXKx6KnPg&sensor=false"
         type="text/javascript"></script>
 <script src="http://brown-ros-pkg.googlecode.com/svn/tags/brown-ros-pkg/rosbridge/ros.js"
         type="text/javascript"></script>
 <script type="text/javascript">
 
 var DOMAIN = "doloras.kicks-ass.org",
-    // DOMAIN = "localhost",
+    //DOMAIN = "localhost",
     IMAGE_DATA_URL = "http://"+DOMAIN+":8080/stream?topic=/usb_cam/image_raw";
 
 //
@@ -53,32 +45,34 @@ var gmapsInterface = function () {
         START_LAT = -97.74017,
         REBOUND_MAP = false,
 
-        map, 
-        num_coords = 0, 
+        map,
+        num_coords = 0,
 
         that = {};
 
     that.load = function () {
-        map = new google.maps.Map(document.getElementById("gmaps_div"), {
-            mapTypeId: google.maps.MapTypeId.HYBRID,
-            center: new google.maps.LatLng(START_LON, START_LAT),
+        var mapOptions = {
             zoom: 20,
-            tilt: 0
-        });3
+            center: new google.maps.LatLng(START_LON, START_LAT),
+            mapTypeId: google.maps.MapTypeId.HYBRID,
+            tilt: 0,
+        };
+
+        map = new google.maps.Map(document.getElementById('gmaps_div'), mapOptions);
     };
 
-    that.draw = function (pos) {
-        var marker, latlngbounds;
+    that.draw = function (data) {
+        var lon = data.latitude,
+            lat = data.longitude,
+            pos = new google.maps.LatLng(lon, lat);
 
-        marker = new google.maps.Marker({
-            map: map,
+        var marker = new google.maps.Marker({
             position: pos,
-            flat: true,
-            title: num_coords+"" 
+            map: map
         });
 
         // recalculate bounds for first point
-        if (REBOUND_MAP && 0 == num_coords) {
+        if (REBOUND_MAP && 0 === num_coords) {
             latlngbounds = new google.maps.LatLngBounds();
             latlngbounds.extend(pos);
 
@@ -98,8 +92,8 @@ var gmapsInterface = function () {
 var lidarImuCanvasInterface = function () {
     var ANIMATION_RATE = 10, // hertz
 
-        canvas, 
-        context, 
+        canvas,
+        context,
         curScanPoints,
         curYaw,
 
@@ -107,14 +101,14 @@ var lidarImuCanvasInterface = function () {
 
         drawPoints = function (points) {
             var i;
-            
+
             context.lineWidth = 1;
             context.strokeStyle = "gray";
 
             context.beginPath();
             context.moveTo(canvas.width/2, canvas.height/2);
             for (i = 0; i < curScanPoints.length; i++) {
-                context.lineTo(curScanPoints[i][0]*14 + canvas.width/2, 
+                context.lineTo(curScanPoints[i][0]*14 + canvas.width/2,
                                curScanPoints[i][1]*14 + canvas.height/2);
                 context.lineTo(canvas.width/2, canvas.height/2);
             }
@@ -124,7 +118,7 @@ var lidarImuCanvasInterface = function () {
             for (i = 0; i < points.length; i++) {
                 if (curScanPoints[i][2]) {
                     context.beginPath();
-                    context.arc(curScanPoints[i][0]*14 + canvas.width/2, 
+                    context.arc(curScanPoints[i][0]*14 + canvas.width/2,
                                 curScanPoints[i][1]*14 + canvas.height/2,
                                 1, 0, 2*Math.PI, true);
                     context.fill();
@@ -185,11 +179,11 @@ var lidarImuCanvasInterface = function () {
         canvas = document.getElementById("lidar_imu_canvas"),
         context = canvas.getContext('2d');
         setInterval(
-            function () { draw(); }, 
+            function () { draw(); },
             1000/ANIMATION_RATE
         );
     };
-    
+
     that.setLIDAR = function (data) {
         var angle, i, range, isValid,
             max_range = data.range_max,
@@ -247,8 +241,8 @@ var odometryCanvasInterface = function () {
         x_first = null,
         y_first = null,
 
-        canvas, 
-        context, 
+        canvas,
+        context,
         buffer,
 
         that = {},
@@ -300,8 +294,8 @@ var odometryCanvasInterface = function () {
             bg_image.onload = function () {
                 context.save();
 
-                context.scale(.8, .8);
-                context.drawImage(bg_image, IMG_START_X, IMG_START_Y); 
+                context.scale(1, 1);
+                context.drawImage(bg_image, IMG_START_X, IMG_START_Y);
 
                 context.restore();
 
@@ -389,11 +383,7 @@ var handlers = {
     },
 
     gps_handler: function (data) {
-        var lon = data.latitude,
-            lat = data.longitude,
-            pos = new google.maps.LatLng(lon, lat);
-
-        gmapsInterface.draw(pos);
+        gmapsInterface.draw(data);
     },
 };
 
@@ -402,33 +392,33 @@ var handlers = {
 //
 
 (function () {
-    var i, 
+    var i,
         connection = new ros.Connection("ws://"+DOMAIN+":9090"),
 
-        topics = [	
+        topics = [
         /*
-            { topicName: "/imu_data", 
-              dataName: "ocean server imu data", 
+            { topicName: "/imu_data",
+              dataName: "ocean server imu data",
               handler: handlers.os_imu_handler,
               rate: 35 },
         */
-            { topicName: "/um6_imu_data", 
-              dataName: "um6 imu data", 
+            { topicName: "/um6_imu_data",
+              dataName: "um6 imu data",
               handler: handlers.um6_imu_handler,
               rate: 19 },
 
-            { topicName: "/ekf_data", 
-              dataName: "ekf data", 
+            { topicName: "/ekf_data",
+              dataName: "ekf data",
               handler: handlers.ekf_handler,
               rate: 15 },
 
-            { topicName: "/gps_data_raw", 
-              dataName: "gps data", 
+            { topicName: "/gps_data_raw",
+              dataName: "gps data",
               handler: handlers.gps_handler,
               rate: 1 },
 
-            { topicName: "/scan", 
-              dataName: "lidar data", 
+            { topicName: "/scan",
+              dataName: "lidar data",
               handler: handlers.lidar_handler,
               rate: 15 },
         ];
@@ -453,10 +443,10 @@ var handlers = {
 
     connection.setOnOpen(function (e) {
         console.log('connected to ROS');
-        
-        for (i = 0; i < topics.length; i++) { 
+
+        for (i = 0; i < topics.length; i++) {
             connection.callService(
-                '/rosjs/subscribe', 
+                '/rosjs/subscribe',
                 '["' + topics[i].topicName + '", ' + (1000/topics[i].rate) + ']',
                 makeAnnouncer(topics[i].topicName)
             );
@@ -468,8 +458,8 @@ var handlers = {
 // Startup
 //
 
-window.onload = function () { 
-    gmapsInterface.load(); 
+var initialize = function () {    
+    gmapsInterface.load();
     lidarImuCanvasInterface.init();
     odometryCanvasInterface.init();
 
@@ -477,9 +467,17 @@ window.onload = function () {
     document.getElementById('image_viewer').setAttribute('src', IMAGE_DATA_URL);
 };
 
+google.maps.event.addDomListener(window, 'load', initialize);
 </script>
+</head>
 
-
+<body onload="initialize()">
+<div id="gmaps_div"></div>
+<canvas id="lidar_imu_canvas" height="360" width="480"></canvas>
+<br/>
+<img id="image_viewer"
+     alt="looks like mjpeg server isn't connected properly!"
+     id="image" height="360" width="480"/>
+<canvas id="odometry_canvas" height="360" width="480"></canvas>
 </body>
 </html>
-
