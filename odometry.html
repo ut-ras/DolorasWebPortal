@@ -13,15 +13,7 @@ body {
     display: inline-block;
 }
 
-#odometry_canvas {
-    background: lightGray;
-}
-
-#image_viewer {
-    background: lightGray;
-}
-
-#lidar_imu_canvas {
+.odometry_canvas {
     background: lightGray;
 }
 </style>
@@ -85,163 +77,21 @@ var gmapsInterface = function () {
     return that;
 }();
 
-//
-// Canvas interfaces
-//
-
-var lidarImuCanvasInterface = function () {
-    var ANIMATION_RATE = 10, // hertz
-
-        canvas,
-        context,
-        curScanPoints,
-        curYaw,
-
-        that = {},
-
-        drawPoints = function (points) {
-            var i;
-
-            context.lineWidth = 1;
-            context.strokeStyle = "gray";
-
-            context.beginPath();
-            context.moveTo(canvas.width/2, canvas.height/2);
-            for (i = 0; i < curScanPoints.length; i++) {
-                context.lineTo(curScanPoints[i][0]*14 + canvas.width/2,
-                               curScanPoints[i][1]*14 + canvas.height/2);
-                context.lineTo(canvas.width/2, canvas.height/2);
-            }
-            context.stroke();
-
-            context.fillStyle = "black";
-            for (i = 0; i < points.length; i++) {
-                if (curScanPoints[i][2]) {
-                    context.beginPath();
-                    context.arc(curScanPoints[i][0]*14 + canvas.width/2,
-                                curScanPoints[i][1]*14 + canvas.height/2,
-                                1, 0, 2*Math.PI, true);
-                    context.fill();
-                }
-            }
-        },
-
-        drawDirection = function (dir) {
-            var farx = 20*Math.cos(dir),
-                fary = -20*Math.sin(dir),
-                lowx = 17*Math.cos(dir + Math.PI/8),
-                lowy = -17*Math.sin(dir + Math.PI/8),
-                highx = 17*Math.cos(dir - Math.PI/8),
-                highy = -17*Math.sin(dir - Math.PI/8);
-
-            context.lineWidth = 2;
-            context.strokeStyle = "blue";
-            context.fillStyle = "blue";
-
-            context.beginPath();
-            context.moveTo(canvas.width/2, canvas.height/2);
-            context.lineTo(canvas.width/2 + farx, canvas.height/2 + fary);
-            context.lineTo(canvas.width/2 + lowx, canvas.height/2 + lowy);
-            context.stroke();
-
-            context.beginPath();
-            context.lineTo(canvas.width/2 + farx, canvas.height/2 + fary);
-            context.lineTo(canvas.width/2 + highx, canvas.height/2 + highy);
-            context.stroke();
-
-            context.beginPath();
-            context.arc(canvas.width/2, canvas.height/2, 3, 0, 2*Math.PI, true);
-            context.fill();
-        },
-
-        draw = function () {
-            if (curYaw || curScanPoints) {
-                context.save();
-                context.fillStyle = "lightGray";
-                context.fillRect(0, 0, canvas.width, canvas.height);
-                context.restore();
-            }
-
-            if (curScanPoints) {
-                context.save();
-                drawPoints(curScanPoints);
-                context.restore();
-            }
-
-            if (curYaw) {
-                context.save();
-                drawDirection(curYaw);
-                context.restore();
-            }
-        };
-
-    that.init = function() {
-        canvas = document.getElementById("lidar_imu_canvas"),
-        context = canvas.getContext('2d');
-        setInterval(
-            function () { draw(); },
-            1000/ANIMATION_RATE
-        );
-    };
-
-    that.setLIDAR = function (data) {
-        var angle, i, range, isValid,
-            max_range = data.range_max,
-            min_angle = data.angle_min,
-            max_angle = data.angle_max,
-            angle_inc = data.angle_increment,
-            data_len = data.ranges.length;
-
-        if (!curScanPoints) {
-            curScanPoints = new Array(data_len);
-
-            for (i = 0; i < data_len; i++) {
-                curScanPoints[i] = new Array(3);
-            }
-        }
-
-        angle = min_angle
-
-        for (i = 0; i < data_len; i++) {
-            range = data.ranges[i];
-            isValid = true;
-
-            if (0 === range) {
-                range = max_range;
-                isValid = false;
-            }
-
-            curScanPoints[i][0] = range*Math.cos((curYaw) ? angle+curYaw : angle);
-            curScanPoints[i][1] = -range*Math.sin((curYaw) ? angle+curYaw : angle);
-            curScanPoints[i][2] = isValid;
-
-            angle += angle_inc;
-        }
-    };
-
-    that.setYaw = function (yaw) {
-        curYaw = yaw;
-    };
-
-    return that;
-}();
-
-var odometryCanvasInterface = function () {
+var makeOdometryCanvasInterface = function (canvas_id, dataname) {
     var STAY_IN_PLACE = false,
         CLEAR_SCREEN = false,
-        BG_IMG_URL = 'images/test2_field.png',
         RADIUS = 2,
         LEN = 10,
         SCALE_Y = 10,
         SCALE_X = 10,
-        IMG_START_X = 30,
-        IMG_START_Y = 8,
         START_STATE_X = 1/2,
         START_STATE_Y = 1/4,
 
         received_first = false,
         x_first = null,
         y_first = null,
+
+        update_count = 0,
 
         canvas,
         context,
@@ -305,26 +155,13 @@ var odometryCanvasInterface = function () {
             context.lineTo(canvas.width, canvas.height - canvas.height*START_STATE_Y);
             context.stroke();
 
+            context.beginPath();
+            context.font = "Bold 12pt Arial";
+            context.fillText(dataname, 0, 14);
+
             context.restore();
 
             buffer = context.getImageData(0, 0, canvas.width, canvas.height);
-        },
-
-        drawImage = function () {
-            bg_image = new Image();
-            bg_image.src = BG_IMG_URL;
-            bg_image.onload = function () {
-                context.save();
-
-                context.scale(1, 1);
-                context.drawImage(bg_image, IMG_START_X, IMG_START_Y);
-
-                context.restore();
-
-                drawGrid();
-
-                buffer = context.getImageData(0, 0, canvas.width, canvas.height);
-            }
         },
 
         toHex = function (n) {
@@ -397,10 +234,7 @@ var odometryCanvasInterface = function () {
             }
 
             return rgbToHex(var_r, var_g, var_b);  
-        },
-
-        update_count = 0;
-
+        };
 
     that.drawState = function (ekf_data) {
         var x = ekf_data.x_pos,
@@ -448,46 +282,69 @@ var odometryCanvasInterface = function () {
     };
 
     that.init = function() {
-        canvas = document.getElementById("odometry_canvas"),
+        canvas = document.getElementById(canvas_id),
         context = canvas.getContext('2d');
         drawBackground();
         drawGrid();
-        //drawImage();
     };
 
     return that;
-}();
+};
 
 //
 // ROS topic callbacks
 //
 
+var odometryCanvasInterfaces = [
+    makeOdometryCanvasInterface("odom_canvas_gps", "gps"),
+    makeOdometryCanvasInterface("odom_canvas_enc_gps", "enc+gps"),
+    makeOdometryCanvasInterface("odom_canvas_yaw_gps", "yaw+gps"),
+    makeOdometryCanvasInterface("odom_canvas_enc", "enc"),
+    makeOdometryCanvasInterface("odom_canvas_enc_yaw", "enc+yaw"),
+    makeOdometryCanvasInterface("odom_canvas_enc_yaw_gps", "enc+yaw+gps")
+];
+
 var handlers = {
-    os_imu_handler: function (data) {
-        console.log("os imu data!");
-        lidarImuCanvasInterface.setYaw(data.yaw);
-    },
-
-    um6_imu_handler: function (data) {
-        // console.log("um6 imu data!");
-        lidarImuCanvasInterface.setYaw(-data.orientation_euler.yaw*Math.PI/180.0);
-    },
-
-    vn200_imu_handler: function (data) {
-        lidarImuCanvasInterface.setYaw(
-            -(data.orientation_euler.yaw)*Math.PI/180.0);
-    },
-
-    lidar_handler: function (data) {
-        // console.log("lidar data!");
-        lidarImuCanvasInterface.setLIDAR(data);
-    },
-
-    ekf_handler: function (data) {
+    ekf_gps_handler: function (data) {
         var x = data.x_pos,
             y = data.y_pos;
 
-        odometryCanvasInterface.drawState(data);
+        odometryCanvasInterfaces[0].drawState(data);
+    },
+
+    ekf_enc_gps_handler: function (data) {
+        var x = data.x_pos,
+            y = data.y_pos;
+
+        odometryCanvasInterfaces[1].drawState(data);
+    },
+
+    ekf_yaw_gps_handler: function (data) {
+        var x = data.x_pos,
+            y = data.y_pos;
+
+        odometryCanvasInterfaces[2].drawState(data);
+    },
+
+    ekf_enc_handler: function (data) {
+        var x = data.x_pos,
+            y = data.y_pos;
+
+        odometryCanvasInterfaces[3].drawState(data);
+    },
+
+    ekf_enc_yaw_handler: function (data) {
+        var x = data.x_pos,
+            y = data.y_pos;
+
+        odometryCanvasInterfaces[4].drawState(data);
+    },
+
+    ekf_enc_yaw_gps_handler: function (data) {
+        var x = data.x_pos,
+            y = data.y_pos;
+
+        odometryCanvasInterfaces[5].drawState(data);
     },
 
     gps_handler: function (data) {
@@ -507,42 +364,40 @@ var handlers = {
         connection = new ros.Connection("ws://"+DOMAIN+":9090"),
 
         topics = [
-            /*
-            { topicName: "/imu_data",
-              dataName: "ocean server imu data",
-              handler: handlers.os_imu_handler,
-              rate: 35 },
+            { topicName: "/ekf_data_gps",
+              dataName: "gps",
+              handler: handlers.ekf_gps_handler,
+              rate: 10 },
 
-            { topicName: "/um6_imu_data",
-              dataName: "um6 imu data",
-              handler: handlers.um6_imu_handler,
-              rate: 19 },
-            */
-            { topicName: "/vn_200_ins_soln",
-              dataName: "vn200 imu data",
-              handler: handlers.vn200_imu_handler,
-              rate: 15 },
+            { topicName: "/ekf_data_enc_gps",
+              dataName: "enc+gps",
+              handler: handlers.ekf_enc_gps_handler,
+              rate: 10 },
 
-            { topicName: "/ekf_data",
-              dataName: "ekf data",
-              handler: handlers.ekf_handler,
-              rate: 15 },
-            /*
-            { topicName: "/gps_data_raw",
-              dataName: "gps data",
-              handler: handlers.gps_handler,
-              rate: 1 },
-            */
+            { topicName: "/ekf_data_yaw_gps",
+              dataName: "yaw+gps",
+              handler: handlers.ekf_yaw_gps_handler,
+              rate: 10 },
+
+            { topicName: "/ekf_data_enc",
+              dataName: "enc",
+              handler: handlers.ekf_enc_handler,
+              rate: 10 },
+
+            { topicName: "/ekf_data_enc_yaw",
+              dataName: "enc+yaw",
+              handler: handlers.ekf_enc_yaw_handler,
+              rate: 10 },
+
+            { topicName: "/ekf_data_enc_yaw_gps",
+              dataName: "enc+yaw+gps",
+              handler: handlers.ekf_enc_yaw_gps_handler,
+              rate: 10 },
+
             { topicName: "/gps_data",
               dataName: "gps data",
               handler: handlers.gps_handler,
               rate: 1 },
-            /*
-            { topicName: "/scan",
-              dataName: "lidar data",
-              handler: handlers.lidar_handler,
-              rate: 15 },
-            */
         ];
 
     connection.setOnClose(function (e) {
@@ -582,11 +437,10 @@ var handlers = {
 
 var initialize = function () {
     gmapsInterface.load();
-    lidarImuCanvasInterface.init();
-    odometryCanvasInterface.init();
 
-    // mjpeg_server image streamer
-    document.getElementById('image_viewer').setAttribute('src', IMAGE_DATA_URL);
+    for (var i = 0; i < odometryCanvasInterfaces.length; i++) {
+        odometryCanvasInterfaces[i].init();
+    }
 };
 
 google.maps.event.addDomListener(window, 'load', initialize);
@@ -594,12 +448,12 @@ google.maps.event.addDomListener(window, 'load', initialize);
 </head>
 
 <body onload="initialize()">
-<div id="gmaps_div"></div>
-<canvas id="lidar_imu_canvas" height="360" width="480"></canvas>
-<br/>
-<img id="image_viewer"
-     alt="looks like mjpeg server isn't connected properly!"
-     id="image" height="360" width="480"/>
-<canvas id="odometry_canvas" height="360" width="480"></canvas>
+<div id="gmaps_div"></div><br/><br/>
+<canvas id="odom_canvas_gps" height="360" width="480"></canvas>
+<canvas id="odom_canvas_enc_gps" height="360" width="480"></canvas>
+<canvas id="odom_canvas_yaw_gps" height="360" width="480"></canvas>
+<canvas id="odom_canvas_enc" height="360" width="480"></canvas>
+<canvas id="odom_canvas_enc_yaw" height="360" width="480"></canvas>
+<canvas id="odom_canvas_enc_yaw_gps" height="360" width="480"></canvas>
 </body>
 </html>
