@@ -33,8 +33,10 @@ var DOMAIN = "doloras.kicks-ass.org",
 //
 
 var gmapsInterface = function () {
-    var START_LON =  30.28831,
-        START_LAT = -97.736011,
+    var START_LON = 30.313714,
+        START_LAT = -97.730458,
+        // START_LON =  30.28831,
+        // START_LAT = -97.736011,
         REBOUND_MAP = false,
 
         map,
@@ -60,7 +62,8 @@ var gmapsInterface = function () {
 
         var marker = new google.maps.Marker({
             position: pos,
-            map: map
+            map: map,
+            icon: "images/marker.gif"
         });
 
         // recalculate bounds for first point
@@ -82,8 +85,8 @@ var makeOdometryCanvasInterface = function (canvas_id, dataname) {
         CLEAR_SCREEN = false,
         RADIUS = 2,
         LEN = 10,
-        SCALE_Y = 10,
-        SCALE_X = 10,
+        SCALE_Y = 2,
+        SCALE_X = 2,
         START_STATE_X = 1/2,
         START_STATE_Y = 1/4,
 
@@ -116,13 +119,13 @@ var makeOdometryCanvasInterface = function (canvas_id, dataname) {
             context.lineWidth = 1;
             context.strokeStyle = "gray";
 
-            for (y = 0; y <= canvas.height; y += SCALE_Y) {
+            for (y = 0; y <= canvas.height; y += SCALE_Y*4) {
                 context.moveTo(0, y);
                 context.lineTo(canvas.width, y);
                 context.stroke();
             }
 
-            for (x = 0; x <= canvas.width; x += SCALE_X) {
+            for (x = 0; x <= canvas.width; x += SCALE_X*4) {
                 context.moveTo(x, 0);
                 context.lineTo(x, canvas.height);
                 context.stroke();
@@ -166,19 +169,19 @@ var makeOdometryCanvasInterface = function (canvas_id, dataname) {
 
         toHex = function (n) {
             n = parseInt(n, 10);
-            
+
             if (isNaN(n)) {
                 return "00";
             }
-            
+
             n = Math.max(0, Math.min(n, 255));
-            
+
             return "0123456789ABCDEF".charAt((n - n%16)/16)
                  + "0123456789ABCDEF".charAt(n%16);
         },
 
-        rgbToHex = function (R, G, B) { 
-            return toHex(R) + toHex(G) + toHex(B); 
+        rgbToHex = function (R, G, B) {
+            return toHex(R) + toHex(G) + toHex(B);
         },
 
         hsv2rgb = function (h, s, v) {
@@ -201,11 +204,11 @@ var makeOdometryCanvasInterface = function (canvas_id, dataname) {
                 var var_2 = v*(1-s*(var_h-var_i));
                 var var_3 = v*(1-s*(1-(var_h-var_i)));
 
-                if (var_i === 0) { 
-                    var_r = v; 
-                    var_g = var_3; 
+                if (var_i === 0) {
+                    var_r = v;
+                    var_g = var_3;
                     var_b = var_1;
-                } else if (var_i === 1) { 
+                } else if (var_i === 1) {
                     var_r = var_2;
                     var_g = v;
                     var_b = var_1;
@@ -221,19 +224,19 @@ var makeOdometryCanvasInterface = function (canvas_id, dataname) {
                     var_r = var_3;
                     var_g = var_1;
                     var_b = v;
-                } else { 
+                } else {
                     var_r = v;
                     var_g = var_1;
                     var_b = var_2;
                 }
 
-                //rgb results = 0 % 255  
+                //rgb results = 0 % 255
                 var_r = Math.round(var_r * 255);
                 var_g = Math.round(var_g * 255);
                 var_b = Math.round(var_b * 255);
             }
 
-            return rgbToHex(var_r, var_g, var_b);  
+            return rgbToHex(var_r, var_g, var_b);
         };
 
     that.drawState = function (ekf_data) {

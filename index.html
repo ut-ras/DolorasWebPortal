@@ -41,8 +41,10 @@ var DOMAIN = "doloras.kicks-ass.org",
 //
 
 var gmapsInterface = function () {
-    var START_LON =  30.28831,
-        START_LAT = -97.736011,
+    var START_LON = 30.313714,
+        START_LAT = -97.730458,
+        // START_LON =  30.28831,
+        // START_LAT = -97.736011,
         REBOUND_MAP = false,
 
         map,
@@ -329,19 +331,19 @@ var odometryCanvasInterface = function () {
 
         toHex = function (n) {
             n = parseInt(n, 10);
-            
+
             if (isNaN(n)) {
                 return "00";
             }
-            
+
             n = Math.max(0, Math.min(n, 255));
-            
+
             return "0123456789ABCDEF".charAt((n - n%16)/16)
                  + "0123456789ABCDEF".charAt(n%16);
         },
 
-        rgbToHex = function (R, G, B) { 
-            return toHex(R) + toHex(G) + toHex(B); 
+        rgbToHex = function (R, G, B) {
+            return toHex(R) + toHex(G) + toHex(B);
         },
 
         hsv2rgb = function (h, s, v) {
@@ -364,11 +366,11 @@ var odometryCanvasInterface = function () {
                 var var_2 = v*(1-s*(var_h-var_i));
                 var var_3 = v*(1-s*(1-(var_h-var_i)));
 
-                if (var_i === 0) { 
-                    var_r = v; 
-                    var_g = var_3; 
+                if (var_i === 0) {
+                    var_r = v;
+                    var_g = var_3;
                     var_b = var_1;
-                } else if (var_i === 1) { 
+                } else if (var_i === 1) {
                     var_r = var_2;
                     var_g = v;
                     var_b = var_1;
@@ -384,19 +386,19 @@ var odometryCanvasInterface = function () {
                     var_r = var_3;
                     var_g = var_1;
                     var_b = v;
-                } else { 
+                } else {
                     var_r = v;
                     var_g = var_1;
                     var_b = var_2;
                 }
 
-                //rgb results = 0 % 255  
+                //rgb results = 0 % 255
                 var_r = Math.round(var_r * 255);
                 var_g = Math.round(var_g * 255);
                 var_b = Math.round(var_b * 255);
             }
 
-            return rgbToHex(var_r, var_g, var_b);  
+            return rgbToHex(var_r, var_g, var_b);
         },
 
         update_count = 0;
@@ -478,6 +480,10 @@ var handlers = {
             -(data.orientation_euler.yaw)*Math.PI/180.0);
     },
 
+    orientation_handler: function(data) {
+        lidarImuCanvasInterface.setYaw(data.yaw);
+    },
+
     lidar_handler: function (data) {
         // console.log("lidar data!");
         lidarImuCanvasInterface.setLIDAR(data);
@@ -517,10 +523,15 @@ var handlers = {
               dataName: "um6 imu data",
               handler: handlers.um6_imu_handler,
               rate: 19 },
-            */
+
             { topicName: "/vn_200_ins_soln",
               dataName: "vn200 imu data",
               handler: handlers.vn200_imu_handler,
+              rate: 15 },
+            */
+            { topicName: "/orientation_data",
+              dataName: "orientation data",
+              handler: handlers.orientation_handler,
               rate: 15 },
 
             { topicName: "/ekf_data",
@@ -594,6 +605,7 @@ google.maps.event.addDomListener(window, 'load', initialize);
 </head>
 
 <body onload="initialize()">
+<h3>Doloras Web Portal</h3>
 <div id="gmaps_div"></div>
 <canvas id="lidar_imu_canvas" height="360" width="480"></canvas>
 <br/>
