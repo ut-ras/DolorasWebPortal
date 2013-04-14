@@ -1,0 +1,63 @@
+<html>
+<head>
+<style type="text/css">
+body {
+	margin: auto;
+	text-align: center;
+}
+
+#gmaps_div {
+    width: 480px;
+    height: 360px;
+	margin: auto;
+    display: inline-block;
+}
+
+#odometry_canvas {
+    background: lightGray;
+}
+
+#image_viewer {
+    background: lightGray;
+}
+
+#lidar_imu_canvas {
+    background: lightGray;
+}
+</style>
+
+<script src="http://brown-ros-pkg.googlecode.com/svn/tags/brown-ros-pkg/rosbridge/ros.js"
+        type="text/javascript"></script>
+<script type="text/javascript">
+
+var DOMAIN = "doloras.kicks-ass.org",
+    // DOMAIN = "localhost",
+    IMAGE_DATA_URLS = [
+        "http://"+DOMAIN+":8080/stream?topic=/usb_cam/image_raw",
+        "http://"+DOMAIN+":8080/stream?topic=/binimg_orange_red_threshold",
+    ];
+
+//
+// Startup
+//
+
+var initialize = function () {
+    // mjpeg_server image streamer
+    for (var i = 0; i < IMAGE_DATA_URLS.length; i++) {
+        document.getElementById('image_viewer_' + i).setAttribute('src', IMAGE_DATA_URLS[i]);
+    }
+};
+</script>
+</head>
+
+<body onload="initialize()">
+<h3>Doloras Web Portal: Vision Pipeline</h3>
+<br/>
+<img id="image_viewer_0"
+     alt="looks like mjpeg server isn't connected properly!"
+     id="image" height="360" width="480"/>
+<img id="image_viewer_1"
+     alt="looks like mjpeg server isn't connected properly!"
+     id="image" height="360" width="480"/>
+</body>
+</html>
