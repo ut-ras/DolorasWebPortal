@@ -1,0 +1,65 @@
+<html>
+<style>
+body {
+    margin: auto;
+    text-align: center;
+}
+</style>
+<head>
+<meta charset="utf-8" />
+
+<script type="text/javascript" src="external/eventemitter2.min.js"></script>
+<script type="text/javascript" src="external/roslib.min.js"></script>
+
+<script>
+
+var RUN_LOCALLY = true,
+    DOMAIN = (RUN_LOCALLY) ? "localhost" : "doloras.kicks-ass.org",
+
+    CLOSE_ENOUGH_TO_GOAL = .4,
+
+    ANGULAR_ACCEL = .5,
+    ANGULAR_INC = .01,
+    ANGULAR_MIN = -.8,
+    ANGULAR_MAX = .8,
+
+    LINEAR_ACCEL = 1.0,
+    LINEAR_INC = .1,
+    LINEAR_MIN = 0,
+    LINEAR_MAX = .3,
+
+    CLEARANCE_MIN = .2,
+    CLEARANCE_MAX = 3,
+
+    LINEAR_WEIGHT = .25,
+    CLEARANCE_WEIGHT = .2,
+    GOAL_DIR_WEIGHT = .6,
+    GOAL_DIST_WEIGHT = .1,
+
+    SLOW_DOWN_RADIUS = 1.0,
+    SIZE_RADIUS = .3,
+    BUFFER_SPACE = .1,
+
+    GOAL_DIST_MAX = 1.0;
+
+</script>
+
+</head>
+<body>
+<canvas id="canvas" height=600 width=600></canvas>
+
+<br/>clearance:<input type="text" name="clearance" id="clearance">
+goal direction:<input type="text" name="goalDir" id="goalDir"/>
+linear velocity:<input type="text" name="linearVel" id="linearVel"/>
+goal distance:<input type="text" name="goalDist" id="goalDist"/>
+
+<script src="ROSInterface"></script>
+<script src="Plotter.js"></script>
+<script src="Geometry.js"></script>
+<script src="ClearanceCalculator.js"></script>
+<script src="DynamicWindow.js"></script>
+<script src="Main.js"></script>
+
+</body>
+</html>
+
