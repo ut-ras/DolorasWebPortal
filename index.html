@@ -28,12 +28,13 @@ body {
 
 <script src="//maps.googleapis.com/maps/api/js?key=AIzaSyDcfZrTqJaJJyX3hxctoJsg7LJXKx6KnPg&sensor=false"
         type="text/javascript"></script>
-<script src="http://brown-ros-pkg.googlecode.com/svn/tags/brown-ros-pkg/rosbridge/ros.js"
+<script src="ros.js"
         type="text/javascript"></script>
 <script type="text/javascript">
 
 var DOMAIN = "doloras.kicks-ass.org",
-    //DOMAIN = "localhost",
+    // DOMAIN = "localhost",
+    // DOMAIN = "10.24.0.1",
     IMAGE_DATA_URL = "http://"+DOMAIN+":8080/stream?topic=/usb_cam/image_raw";
 
 //
@@ -548,12 +549,11 @@ var handlers = {
               dataName: "gps data",
               handler: handlers.gps_handler,
               rate: 1 },
-            /*
+
             { topicName: "/scan",
               dataName: "lidar data",
               handler: handlers.lidar_handler,
               rate: 15 },
-            */
         ];
 
     connection.setOnClose(function (e) {

@@ -24,9 +24,12 @@ body {
         type="text/javascript"></script>
 <script type="text/javascript">
 
-var // DOMAIN = "doloras.kicks-ass.org",
-    DOMAIN = "10.42.0.1",
-    IMAGE_DATA_URL = "http://"+DOMAIN+":8080/stream?topic=/usb_cam/image_raw";
+var DOMAIN = "doloras.kicks-ass.org",
+    // DOMAIN = "10.42.0.1",
+    IMAGE_DATA_URLS = [
+        "http://"+DOMAIN+":8080/stream?topic=/usb_cam/image_raw",
+        "http://"+DOMAIN+":8080/stream?topic=/vision/out",
+    ];
 
 //
 // Google mapping stuff
@@ -87,8 +90,8 @@ var makeOdometryCanvasInterface = function (canvas_id, dataname) {
         CLEAR_SCREEN = false,
         RADIUS = 2,
         LEN = 10,
-        SCALE_Y = 4,
-        SCALE_X = 4,
+        SCALE_Y = 16,
+        SCALE_X = 16,
         START_STATE_X = 1/2,
         START_STATE_Y = 1/2,
 
@@ -365,17 +368,22 @@ var initialize = function () {
         odometryCanvasInterfaces[i].init();
     }
 
-    // mjpeg_server image streamer
-    document.getElementById('image_viewer').setAttribute('src', IMAGE_DATA_URL);
+    for (var i = 0; i < IMAGE_DATA_URLS.length; i++) {
+        document.getElementById('image_viewer_' + i).setAttribute('src', IMAGE_DATA_URLS[i]);
+    }
+
 };
 
 </script>
 </head>
 
 <body onload="initialize()">
-<img id="image_viewer"
+<img id="image_viewer_0"
      alt="looks like mjpeg server isn't connected properly!"
      id="image" height="360" width="480"/>
-<canvas id="odom_canvas_ekf" height="360" width="480"></canvas>
+<img id="image_viewer_1"
+     alt="looks like mjpeg server isn't connected properly!"
+     id="image" height="360" width="480"/>
+     <canvas id="odom_canvas_ekf" height="360" width="480"></canvas>
 </body>
 </html>

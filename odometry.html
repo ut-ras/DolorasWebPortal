@@ -33,8 +33,10 @@ var DOMAIN = "doloras.kicks-ass.org",
 //
 
 var gmapsInterface = function () {
-    var START_LON = 30.313714,
-        START_LAT = -97.730458,
+    var START_LON = 30.315841,
+        START_LAT = -97.728706,
+        // START_LON = 30.313714,
+        // START_LAT = -97.730458,
         // START_LON =  30.28831,
         // START_LAT = -97.736011,
         REBOUND_MAP = false,
@@ -85,10 +87,10 @@ var makeOdometryCanvasInterface = function (canvas_id, dataname) {
         CLEAR_SCREEN = false,
         RADIUS = 2,
         LEN = 10,
-        SCALE_Y = 2,
-        SCALE_X = 2,
+        SCALE_Y = 4,
+        SCALE_X = 4,
         START_STATE_X = 1/2,
-        START_STATE_Y = 1/4,
+        START_STATE_Y = 1/2,
 
         received_first = false,
         x_first = null,
