@@ -13,8 +13,12 @@ body {
 
 <script>
 
-var RUN_LOCALLY = true,
-    DOMAIN = (RUN_LOCALLY) ? "localhost" : "doloras.kicks-ass.org",
+var ADDRESS = 1, // 0=localhost, 1=internet, 2=grannyfi
+    DOMAIN = (ADDRESS === 0) ? "localhost" :
+             (ADDRESS === 1) ? "doloras.kicks-ass.org" : "10.42.0.1";
+
+    USING_ROS = true,
+    INTERCEPT_GOAL = true,
 
     CLOSE_ENOUGH_TO_GOAL = .4,
 
@@ -34,19 +38,19 @@ var RUN_LOCALLY = true,
     LINEAR_WEIGHT = .25,
     CLEARANCE_WEIGHT = .2,
     GOAL_DIR_WEIGHT = .6,
-    GOAL_DIST_WEIGHT = .1,
+    GOAL_DIST_WEIGHT = .07,
 
     SLOW_DOWN_RADIUS = 1.0,
     SIZE_RADIUS = .3,
     BUFFER_SPACE = .1,
 
-    GOAL_DIST_MAX = 1.0;
+    GOAL_DIST_MAX = 5.0;
 
 </script>
 
 </head>
 <body>
-<canvas id="canvas" height=600 width=600></canvas>
+<canvas id="canvas" height=600 width=850></canvas>
 
 <br/>clearance:<input type="text" name="clearance" id="clearance">
 goal direction:<input type="text" name="goalDir" id="goalDir"/>

@@ -88,6 +88,7 @@ var acquireData, sendCommand;
         getGoalClient.callService(goalReq, function (result) {
             data.goalx = result.goal.x;
             data.goaly = result.goal.y;
+            data.timeout = (result.goal.z === -10);
             gotGoal = true;
 
             returnIfDone();

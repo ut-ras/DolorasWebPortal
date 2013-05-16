@@ -23,6 +23,7 @@ DynamicWindow = function (
     var best_weight = -1,
         best_linear = null,
         best_angular = null,
+        best_traj = null,
         best_found = false;
 
     for (var angular = ANGULAR_MIN;
@@ -88,18 +89,27 @@ DynamicWindow = function (
             if (res.traj.type === "circle") {
                 var d = glib.euclid(goal_x, goal_y, res.traj.x, res.traj.y);
                 goaldist = Math.abs(d - res.traj.r);
-            } else if (res.traj.type === "vector") {
-                var s = clib.getParameterOfIntersection(
-                    goal_x, goal_y, res.traj.dir + Math.PI/2.0,
-                    cur_x, cur_y, res.traj.dir
-                    );
 
-                if (s === false) {
+                // console.log("circle: ", goaldist);
+            } else if (res.traj.type === "vector") {
+                var goal_param = clib.getParameterOfIntersection(
+                        cur_x, cur_y, res.traj.dir,
+                        goal_x, goal_y, res.traj.dir + Math.PI/2.0
+                        );
+
+                if (goal_param === false) {
                     throw "the lines are perpendicular--but no intersection?!";
-                } else if (s < 0) {
-                    goaldist = GOAL_DIST_MAX;
                 } else {
-                    goaldist = s;
+                    var traj_param = clib.getParameterOfIntersection(
+                        goal_x, goal_y, res.traj.dir + Math.PI/2.0,
+                        cur_x, cur_y, res.traj.dir
+                        );
+
+                    if (traj_param < 0) {
+                        goaldist = GOAL_DIST_MAX;
+                    } else {
+                        goaldist = Math.abs(goal_param);
+                    }
                 }
             } else if (res.traj.type === "point") {
                 goaldist = distToGoal;
@@ -110,6 +120,12 @@ DynamicWindow = function (
             }
 
             var goalDistNorm = 1 - goaldist/GOAL_DIST_MAX;
+
+            // hack to get what I want out of this piece of shit.
+            if (goalDir < -Math.PI/2 || goalDir > Math.PI/2) {
+                goalDistNorm = 0;
+            }
+
 
             //
             // get the final weight, compare it with what we've seen so far
@@ -123,6 +139,7 @@ DynamicWindow = function (
                 best_weight = weight;
                 best_linear = linear;
                 best_angular = angular;
+                best_traj = res.traj;
                 best_found = true;
             }
 
@@ -138,6 +155,8 @@ DynamicWindow = function (
                     Plotter.plotCircle(res.traj.x, res.traj.y, res.traj.r, color);
                 } else if (res.traj.type === "vector") {
                     Plotter.plotVector(res.traj.x, res.traj.y, res.traj.dir, color);
+                } else if (res.traj.type === "point") {
+                    Plotter.plotCircle(res.traj.x, res.traj.y, .03, color);
                 }
             }
         }
@@ -146,12 +165,21 @@ DynamicWindow = function (
     if (!best_found || (Math.abs(best_linear) <= 1e-6 && Math.abs(best_angular) <= 1e-6)) {
         action_out.linear = 0;
         action_out.angular = 0;
-
-        return;
     }
 
     if (distToGoal < SLOW_DOWN_RADIUS) {
         best_linear *= (distToGoal/SLOW_DOWN_RADIUS);
+    }
+
+    if (best_found) {
+        var color = "white";
+        if (best_traj.type === "circle") {
+            Plotter.plotCircle(best_traj.x, best_traj.y, best_traj.r, color, 3);
+        } else if (best_traj.type === "vector") {
+            Plotter.plotVector(best_traj.x, best_traj.y, best_traj.dir, color, 3);
+        } else if (best_traj.type === "point") {
+            Plotter.plotPoint(best_traj.x, best_traj.y, .1, color);
+        }
     }
 
     action_out.linear = best_linear;

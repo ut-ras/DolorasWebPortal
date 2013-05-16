@@ -1,6 +1,5 @@
 (function () {
     var RATE = 10, // Hz
-        USING_ROS = true,
         NUM_OBSTACLES = 100;
 
     var plotEverything = function (data) {
@@ -50,7 +49,15 @@
         }
     };
 
+    var goalx_intercept = false,
+        goaly_intercept = false;
+
     var step = function (data) {
+        if (INTERCEPT_GOAL && goalx_intercept !== false) {
+            data.goalx = goalx_intercept;
+            data.goaly = goaly_intercept;
+        }
+
         plotEverything(data);
 
         var action_out = {
@@ -73,6 +80,7 @@
             );
 
         sendCommand(action_out.linear, action_out.angular);
+
         return action_out;
     };
 
@@ -91,18 +99,32 @@
     Plotter.init(document.getElementById("canvas"), .5, .5, 50, 50);
 
     if (USING_ROS) {
+        if (INTERCEPT_GOAL) {
+            canvas.onmousedown = function (event) {
+                event.preventDefault();
+
+                var coords = Plotter.getPlotCoords(event.offsetX, event.offsetY);
+                goalx_intercept = coords[0];
+                goaly_intercept = coords[1];
+            }
+        }
+
         setInterval(readWeights, 1000)
 
         setTimeout(
             function f() {
                 acquireData(function (data) {
-                    processData(data);
-                    step(data);
+                    if (!data.timeout) {
+                        processData(data);
+                        step(data);
+                    } else {
+                        console.log("encountered a goal timeout! (/goal isn't being published to)");
+                    }
+
+                    setTimeout(f, 1);
                 });
 
                 readWeights();
-
-                setTimeout(f, 1000/RATE);
             },
             1000/RATE
             );
@@ -127,8 +149,8 @@
             w: 0,
             goalx: 0,
             goaly: 0,
-            cloud: cloud
-            }
+            cloud: cloud,
+            };
 
         for (var i = 0; i < NUM_OBSTACLES; i++) {
             do {

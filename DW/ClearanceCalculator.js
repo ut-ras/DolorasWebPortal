@@ -40,8 +40,15 @@ var clib = (function() {
         };
     };
 
-    // returns parameter on the second line of the intersection
-    // false if it doesn't exist
+    //
+    // This will parameterize two lines from each (x0, y0, theta) pair with:
+    //  x(t) = x0 + t*cos(theta)
+    //  y(t) = y0 + t*sin(theta)
+    // Then it calculates the intersection of the two lines, and returns
+    //  the parameter t on the second line for that intersection.
+    //
+    // Returns false if no intersection exists
+    //
     var getParameterOfIntersection = function (x0, y0, theta0, x1, y1, theta1) {
         // return false if the angles are parallel
         if (Math.abs(Math.sin(theta0 - theta1)) < SMALL_ENOUGH) {
