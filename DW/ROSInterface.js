@@ -5,6 +5,12 @@ var acquireData, sendCommand;
             url : 'ws://' + DOMAIN + ':9090'
             });
 
+        getAllDataClient = new ROSLIB.Service({
+            ros : ros,
+            name : '/getAllData',
+            serviceType : 'ReactiveDecisionMaker/GetAllData'
+            }),
+        /*
         getPosClient = new ROSLIB.Service({
             ros : ros,
             name : '/getPos',
@@ -34,7 +40,7 @@ var acquireData, sendCommand;
             name : '/getTwist',
             serviceType : 'ReactiveDecisionMaker/GetTwist'
             }),
-
+        */
         velCmdTopic = new ROSLIB.Topic({
             ros : ros,
             name : '/vel_cmd_tbf',
@@ -45,6 +51,23 @@ var acquireData, sendCommand;
         console.log("acquiring data");
         var data = {};
 
+        var req = new ROSLIB.ServiceRequest();
+
+        getAllDataClient.callService(req, function (result) {
+            data.x = result.pos.x;
+            data.y = result.pos.y;
+            data.heading = result.heading;
+            data.v = result.twist.linear.x;
+            data.w = result.twist.angular.z;
+            data.pdata = result.pdata;
+            data.goalx = result.goal.x;
+            data.goaly = result.goal.y;
+            data.timeout = (result.goal.z === -10);
+
+            callback(data);
+        });
+
+        /*
         var gotPos = false,
             gotHeading = false,
             gotPData = false,
@@ -101,6 +124,7 @@ var acquireData, sendCommand;
 
             returnIfDone();
         });
+        */
     };
 
     sendCommand = function (linear, angular) {
